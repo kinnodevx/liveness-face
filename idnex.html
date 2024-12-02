@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Processamento Frame a Frame</title>
+</head>
+<body>
+  <h1>Upload de Vídeo para Processamento "Ao Vivo"</h1>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="video" accept="video/*" required>
+    <button type="submit">Enviar e Processar</button>
+  </form>
+  <h2>Frames Processados</h2>
+  <canvas id="videoCanvas" style="border: 1px solid black;"></canvas>
+  
+  <script>
+    const form = document.getElementById('uploadForm');
+    const canvas = document.getElementById('videoCanvas');
+    const ctx = canvas.getContext('2d');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      // Conecta ao WebSocket
+      const ws = new WebSocket('ws://localhost:3001');
+      ws.binaryType = 'arraybuffer';
+
+      ws.onmessage = (event) => {
+        if (event.data === 'done') {
+          alert('Processamento concluído!');
+          ws.close();
+        } else if (event.data !== 'error') {
+          const img = new Image();
+          const blob = new Blob([event.data], { type: 'image/jpeg' });
+          img.src = URL.createObjectURL(blob);
+
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+          };
+        }
+      };
+
+      try {
+        await fetch('http://localhost:3000/process-video', {
+          method: 'POST',
+          body: formData,
+        });
+      } catch (err) {
+        console.error('Erro ao enviar o vídeo:', err);
+        alert('Erro no envio ou processamento.');
+      }
+    });
+  </script>
+</body>
+</html>
